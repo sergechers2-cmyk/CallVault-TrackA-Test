@@ -1,6 +1,8 @@
 name: Build CallVault Track A Test
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
 
 jobs:

@@ -1,0 +1,65 @@
+name: Build CallVault Track A Test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout patch project
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android build dependencies
+        shell: bash
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager \
+            "platform-tools" \
+            "platforms;android-36" \
+            "build-tools;36.0.0" \
+            "ndk;27.2.12479018" \
+            "cmake;3.22.1"
+
+      - name: Fetch pinned upstream CallVault v2.2.0
+        shell: bash
+        run: |
+          git clone --depth 1 --branch v2.2.0 --recursive https://github.com/madkongo/CallVault.git upstream
+          test -f upstream/app/src/main/java/com/baba/callvault/services/recording/handoff/TrackAProbe.kt
+
+      - name: Apply Track A test overlay
+        run: python3 scripts/apply_tracka.py
+
+      - name: Build isolated debug APK
+        shell: bash
+        working-directory: upstream
+        run: |
+          chmod +x gradlew
+          ./gradlew :app:assembleDebug -PisolateTestApp --no-daemon
+
+      - name: Verify APK
+        shell: bash
+        run: |
+          test -f upstream/app/build/outputs/apk/debug/app-debug.apk
+          sha256sum upstream/app/build/outputs/apk/debug/app-debug.apk | tee tracka-test.sha256
+          unzip -l upstream/app/build/outputs/apk/debug/app-debug.apk | grep -q 'TrackATestActivity'
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: CallVault-TrackA-Test-v2.2.0
+          path: |
+            upstream/app/build/outputs/apk/debug/app-debug.apk
+            tracka-test.sha256
+            upstream/build/reports/problems/problems-report.html
+          if-no-files-found: error

@@ -20,7 +20,7 @@ class TrackATestActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        title = "Track A Test"
+        title = "CallVault Track A DIAGNOSTIC 3"
 
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -28,13 +28,13 @@ class TrackATestActivity : Activity() {
         }
 
         root.addView(TextView(this).apply {
-            text = "CallVault — Track A DIAGNOSTIC 2"
+            text = "CallVault — Track A DIAGNOSTIC 3"
             textSize = 24f
             setTypeface(typeface, Typeface.BOLD)
         })
 
         root.addView(TextView(this).apply {
-            text = "Этот вариант запускает отдельный тестовый RecorderServer внутри изолированного APK. Основной CallVault не модифицируется. Сначала один раз настрой этот экземпляр CallVault, затем подключи его daemon. Во время теста телефонный звонок не нужен до шага Track A."
+            text = "Это отдельное тестовое приложение с собственным package ID и TEST RecorderServer. Основной CallVault не обновляется и не заменяется. Сначала при необходимости настрой этот экземпляр CallVault, затем подключи его TEST daemon."
             textSize = 16f
             setPadding(0, dp(12), 0, dp(12))
         })
@@ -118,14 +118,11 @@ class TrackATestActivity : Activity() {
         statusView.text = "Подключаем TEST daemon через ADB…"
         Thread {
             val ok = runCatching {
-                // Deliberately call the launcher directly instead of RecorderBackend.ensureRunning():
-                // ensureRunning() calls killStaleRecorders(), which would kill the user's working
-                // release CallVault daemon. This diagnostic build must not do that.
                 RecorderServerLauncher.ensureServerRunning(this, 24_000)
             }.getOrElse { false }
             runOnUiThread {
                 statusView.text = if (ok) {
-                    "Статус: TEST recorder daemon подключён."
+                    "Статус: TEST daemon подключён."
                 } else {
                     "TEST daemon не подключён. Проверь setup, pairing/Wireless debugging и повтори."
                 }
@@ -168,9 +165,9 @@ class TrackATestActivity : Activity() {
         runButton.isEnabled = false
         statusView.text = "Выполняется Track A probe… ничего не записывается."
         Thread {
-            val result = runCatching { TrackAProbe.run() }.getOrElse { t ->
+            val result = runCatching { TrackAProbe.run() }.getOrElse { throwable ->
                 Bundle().apply {
-                    putString("result", "EXCEPTION — ${t.javaClass.simpleName}: ${t.message}")
+                    putString("result", "EXCEPTION — ${throwable.javaClass.simpleName}: ${throwable.message}")
                 }
             }
             val text = result.getString("result") ?: result.toString()

@@ -1,8 +1,8 @@
-name: Build CallVault Track A Diagnostic
+name: Build CallVault Track A Diagnostic 3
 
 on:
   push:
-    branches: [main, tracka-diagnostic-2-self-daemon]
+    branches: [main, tracka-diagnostic-3-separate-app]
   workflow_dispatch:
 
 jobs:
@@ -40,7 +40,7 @@ jobs:
           git clone --depth 1 --branch v2.2.0 --recursive https://github.com/madkongo/CallVault.git upstream
           test -f upstream/app/src/main/java/com/baba/callvault/services/recording/handoff/TrackAProbe.kt
 
-      - name: Apply Track A test overlay
+      - name: Apply Track A DIAGNOSTIC-3 overlay
         run: python3 scripts/apply_tracka.py
 
       - name: Build isolated debug APK
@@ -50,21 +50,26 @@ jobs:
           chmod +x gradlew
           ./gradlew :app:assembleDebug -PisolateTestApp --no-daemon
 
-      - name: Verify APK
+      - name: Verify APK identity and Track A wiring
         shell: bash
         run: |
-          test -f upstream/app/build/outputs/apk/debug/app-debug.apk
-          sha256sum upstream/app/build/outputs/apk/debug/app-debug.apk | tee tracka-test.sha256
-          # Activities are compiled into DEX files, so their Kotlin source filename
-          # does not appear in the APK ZIP listing. Verify the class is present in DEX.
-          unzip -p upstream/app/build/outputs/apk/debug/app-debug.apk 'classes*.dex' | strings | grep -q 'TrackATestActivity'
-          # Verify that the isolated daemon authority was patched to match the isolated manifest authority.
-          unzip -p upstream/app/build/outputs/apk/debug/app-debug.apk 'classes*.dex' | strings | grep -q 'com.baba.callvault.instrtest.recorder'
+          APK=upstream/app/build/outputs/apk/debug/app-debug.apk
+          test -f "$APK"
+          sha256sum "$APK" | tee tracka-test.sha256
+          AAPT="$ANDROID_HOME/build-tools/36.0.0/aapt"
+          "$AAPT" dump badging "$APK" | grep -q "package: name='com.baba.callvault.trackadiag3'"
+          "$AAPT" dump badging "$APK" | grep -q "application-label:'CallVault Track A DIAGNOSTIC 3'"
+          unzip -p "$APK" 'classes*.dex' | strings | grep -q 'TrackATestActivity'
+          unzip -p "$APK" 'classes*.dex' | strings | grep -q 'com.baba.callvault.trackadiag3.recorder'
+          if unzip -p "$APK" 'classes*.dex' | strings | grep -q 'com.baba.callvault.instrtest.recorder'; then
+            echo "Old DIAGNOSTIC-2 authority leaked into DIAGNOSTIC-3 APK"
+            exit 1
+          fi
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: CallVault-TrackA-DIAGNOSTIC-2-v2.2.0
+          name: CallVault-TrackA-DIAGNOSTIC-3-v2.2.0
           path: |
             upstream/app/build/outputs/apk/debug/app-debug.apk
             tracka-test.sha256

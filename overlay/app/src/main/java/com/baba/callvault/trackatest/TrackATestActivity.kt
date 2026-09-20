@@ -8,7 +8,6 @@ import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
-import com.baba.callvault.data.PrivilegedMode
 import com.baba.callvault.server.RecorderConnection
 import com.baba.callvault.server.RecorderServerLauncher
 import com.baba.callvault.services.recording.handoff.TrackAProbe

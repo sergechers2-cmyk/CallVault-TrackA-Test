@@ -1,8 +1,8 @@
-name: Build CallVault Track A Test
+name: Build CallVault Track A Diagnostic
 
 on:
   push:
-    branches: [main]
+    branches: [main, tracka-diagnostic-2-self-daemon]
   workflow_dispatch:
 
 jobs:
@@ -56,11 +56,13 @@ jobs:
           # Activities are compiled into DEX files, so their Kotlin source filename
           # does not appear in the APK ZIP listing. Verify the class is present in DEX.
           unzip -p upstream/app/build/outputs/apk/debug/app-debug.apk 'classes*.dex' | strings | grep -q 'TrackATestActivity'
+          # Verify that the isolated daemon authority was patched to match the isolated manifest authority.
+          unzip -p upstream/app/build/outputs/apk/debug/app-debug.apk 'classes*.dex' | strings | grep -q 'com.baba.callvault.instrtest.recorder'
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: CallVault-TrackA-Test-v2.2.0
+          name: CallVault-TrackA-DIAGNOSTIC-2-v2.2.0
           path: |
             upstream/app/build/outputs/apk/debug/app-debug.apk
             tracka-test.sha256

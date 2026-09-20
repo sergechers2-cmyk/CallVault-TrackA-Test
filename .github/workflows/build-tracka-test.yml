@@ -1,8 +1,8 @@
-name: Build CallVault Track A Diagnostic 3
+name: Build CallVault Track A Diagnostic 4
 
 on:
   push:
-    branches: [main, tracka-diagnostic-3-separate-app]
+    branches: [main, tracka-diagnostic-4-main-process]
   workflow_dispatch:
 
 jobs:
@@ -40,36 +40,36 @@ jobs:
           git clone --depth 1 --branch v2.2.0 --recursive https://github.com/madkongo/CallVault.git upstream
           test -f upstream/app/src/main/java/com/baba/callvault/services/recording/handoff/TrackAProbe.kt
 
-      - name: Apply Track A DIAGNOSTIC-3 overlay
+      - name: Apply Track A DIAGNOSTIC-4 overlay
         run: python3 scripts/apply_tracka.py
 
-      - name: Build isolated debug APK
+      - name: Build normal-package debug APK
         shell: bash
         working-directory: upstream
         run: |
           chmod +x gradlew
-          ./gradlew :app:assembleDebug -PisolateTestApp --no-daemon
+          ./gradlew :app:assembleDebug -PversionCode=20200 -PversionName=2.2.0 --no-daemon
 
-      - name: Verify APK identity and Track A wiring
+      - name: Verify APK identity and diagnostic wiring
         shell: bash
         run: |
           APK=upstream/app/build/outputs/apk/debug/app-debug.apk
           test -f "$APK"
           sha256sum "$APK" | tee tracka-test.sha256
           AAPT="$ANDROID_HOME/build-tools/36.0.0/aapt"
-          "$AAPT" dump badging "$APK" | grep -q "package: name='com.baba.callvault.trackadiag3'"
-          "$AAPT" dump badging "$APK" | grep -q "application-label:'CallVault Track A DIAGNOSTIC 3'"
+          "$AAPT" dump badging "$APK" | grep -q "package: name='com.baba.callvault'"
+          "$AAPT" dump badging "$APK" | grep -q "application-label:'CallVault'"
           unzip -p "$APK" 'classes*.dex' | strings | grep -q 'TrackATestActivity'
-          unzip -p "$APK" 'classes*.dex' | strings | grep -q 'com.baba.callvault.trackadiag3.recorder'
-          if unzip -p "$APK" 'classes*.dex' | strings | grep -q 'com.baba.callvault.instrtest.recorder'; then
-            echo "Old DIAGNOSTIC-2 authority leaked into DIAGNOSTIC-3 APK"
+          unzip -p "$APK" 'classes*.dex' | strings | grep -q 'com.baba.callvault.recorder'
+          if unzip -p "$APK" 'classes*.dex' | strings | grep -q 'trackadiag3'; then
+            echo "DIAGNOSTIC-3 isolated package leaked into DIAGNOSTIC-4 APK"
             exit 1
           fi
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: CallVault-TrackA-DIAGNOSTIC-3-v2.2.0
+          name: CallVault-TrackA-DIAGNOSTIC-4-v2.2.0
           path: |
             upstream/app/build/outputs/apk/debug/app-debug.apk
             tracka-test.sha256
